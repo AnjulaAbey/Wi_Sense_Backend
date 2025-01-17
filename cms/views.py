@@ -9,7 +9,11 @@ from sklearn.decomposition import PCA
 from cms.models import CSIData
 from cms.serializers import CSIDataSerializer
 from datetime import datetime
+from datetime import datetime, timedelta
+from django.utils.timezone import make_aware
 
+
+ESP32_start_time = datetime(2025, 1, 9, 9, 5) 
 class CSIDataViewSet(viewsets.ModelViewSet):
     queryset = CSIData.objects.all()
     serializer_class = CSIDataSerializer
@@ -71,16 +75,41 @@ class CSIDataViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def predict_respiration_rate(self, request):
-        one_minute_ago = datetime(2025, 1, 9, 9, 9)
-        latest_data = CSIData.objects.filter(created_at__gte=one_minute_ago).values_list("raw_data", flat=True)
-        print(latest_data)
+        # Get the current time in UTC
+        now = datetime(2025, 1, 9, 9, 10) 
+        
+        # Calculate the time window you want (from now to one minute ago)
+        one_minute_ago = now - timedelta(minutes=2)
+        # Calculate the relative time (in microseconds) for now and one minute ago
+        now_duration = int((now - ESP32_start_time).total_seconds() * 1e6)  # Convert to microseconds
+        one_minute_ago_duration = int((one_minute_ago - ESP32_start_time).total_seconds() * 1e6)  # Convert to microseconds
+        print("now " , now_duration)
+        print("one minute ago " , one_minute_ago_duration)
+        # Fetch the CSI data between the two durations (from one minute ago to now)
+        latest_data = CSIData.objects.filter(
+            time_stamp__gte=str(one_minute_ago_duration),  # Time duration one minute ago
+            time_stamp__lte=str(now_duration)  # Time duration now
+        ).values_list("raw_data", flat=True)
+        
+        print(len(latest_data))
+        time_range= (now_duration - one_minute_ago_duration)
+        print(time_range/10**6)
         if not latest_data.exists():
-            return Response({"error": "No data available for the last minute."}, status=404)
-
+            return Response({"error": "No data available for the last minute."}, status=400)
+        
+        # Preprocess the data
         csi_data = list(latest_data)
         preprocessed_signal = CSIDataViewSet.load_and_preprocess(csi_data)
-        fs = preprocessed_signal.shape[0]/60
+        
+        # Calculate sampling frequency
+        fs = preprocessed_signal.shape[0] / 60
+        print(fs)
+        
+        # Apply bandpass filter
         filtered_signal = CSIDataViewSet.ellip_bandpass(preprocessed_signal, lowcut=0.18, highcut=0.65, fs=fs)
+        print(filtered_signal)
+        
+        # Estimate respiration rate
         rr_bpm = CSIDataViewSet.estimate_respiration_rate(filtered_signal, fs=fs)
 
         return Response({"respiration_rate_bpm": rr_bpm})
