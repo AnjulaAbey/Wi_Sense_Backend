@@ -121,10 +121,6 @@ class RealTimePresenceDetection(viewsets.ModelViewSet):
     queryset = CSIData.objects.all().order_by('-time_stamp')
     serializer_class = CSIDataSerializer
 
-    def perform_create(self, serializer):
-        instance = serializer.save()
-        # Optional: inline prediction if desired on each save
-
     @action(detail=False, methods=['GET'], url_path='predict')
     def predict_presence(self, request):
         try:
