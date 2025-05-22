@@ -1,5 +1,5 @@
 from django.utils.timezone import now, timedelta
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 import numpy as np
@@ -11,7 +11,10 @@ from cms.serializers import CSIDataSerializer
 from datetime import datetime
 from datetime import datetime, timedelta
 from django.utils.timezone import make_aware
+import joblib
+from .utils import hampel_filter_fast, Get_Amp, apply_pca
 
+model = joblib.load('presence_detection_model.pkl')
 
 ESP32_start_time = datetime(2025, 1, 9, 9, 5) 
 class CSIDataViewSet(viewsets.ModelViewSet):
@@ -113,3 +116,35 @@ class CSIDataViewSet(viewsets.ModelViewSet):
         rr_bpm = CSIDataViewSet.estimate_respiration_rate(filtered_signal, fs=fs)
 
         return Response({"respiration_rate_bpm": rr_bpm})
+    
+class RealTimePresenceDetection(viewsets.ModelViewSet):
+    queryset = CSIData.objects.all().order_by('-time_stamp')
+    serializer_class = CSIDataSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        # Optional: inline prediction if desired on each save
+
+    @action(detail=False, methods=['GET'], url_path='predict')
+    def predict_presence(self, request):
+        try:
+            # Fetch latest 30 entries
+            latest_entries = CSIData.objects.order_by('-time_stamp')[:30]
+            latest_entries = list(reversed(latest_entries))  # Ensure time order
+
+            csi_list = [entry.csi_data for entry in latest_entries]
+            df = pd.DataFrame(csi_list, columns=["CSI_DATA"])
+
+            # Apply preprocessing
+            signal, fs, time, _, _ = Get_Amp(df)
+            filtered = hampel_filter_fast(pd.DataFrame(signal))
+            latest = filtered.iloc[-1:].values  # Last sample for prediction
+            pca_features = apply_pca(latest, 20, explained_variance=0.95)
+
+            # Predict
+            prediction = model.predict(pca_features)
+            presence = int(prediction[0])
+            return Response({"presence": presence}, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
