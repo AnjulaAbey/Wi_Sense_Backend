@@ -78,39 +78,29 @@ class CSIDataViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def predict_respiration_rate(self, request):
-        # Get the current time in UTC
-        now = datetime(2025, 1, 9, 9, 10) 
-        
-        # Calculate the time window you want (from now to one minute ago)
-        one_minute_ago = now - timedelta(minutes=2)
-        # Calculate the relative time (in microseconds) for now and one minute ago
-        now_duration = int((now - ESP32_start_time).total_seconds() * 1e6)  # Convert to microseconds
-        one_minute_ago_duration = int((one_minute_ago - ESP32_start_time).total_seconds() * 1e6)  # Convert to microseconds
-        print("now " , now_duration)
-        print("one minute ago " , one_minute_ago_duration)
-        # Fetch the CSI data between the two durations (from one minute ago to now)
-        latest_data = CSIData.objects.filter(
-            time_stamp__gte=str(one_minute_ago_duration),  # Time duration one minute ago
-            time_stamp__lte=str(now_duration)  # Time duration now
-        ).values_list("raw_data", flat=True)
-        
-        print(len(latest_data))
-        time_range= (now_duration - one_minute_ago_duration)
-        print(time_range/10**6)
-        if not latest_data.exists():
-            return Response({"error": "No data available for the last minute."}, status=400)
-        
-        # Preprocess the data
-        csi_data = list(latest_data)
+            # Fetch the latest 6000 CSI entries, ordered by timestamp (most recent first)
+        latest_data = CSIData.objects.order_by('-port_time_stamp')[:6000].values_list("raw_data", flat=True)
+        latest_entries = CSIData.objects.order_by('-port_time_stamp')[:6000].values("time_stamp")
+        if not latest_data:
+            return Response({"error": "No CSI data available."}, status=status.HTTP_400_BAD_REQUEST)
+            # Extract timestamps for fs calculation
+        latest_entries = list(latest_entries)
+        start_time = int(latest_entries[0]["time_stamp"])
+        end_time = int(latest_entries[-1]["time_stamp"])
+        time_duration_microseconds = end_time - start_time
+        time_duration_seconds = time_duration_microseconds / 1e6
+        print(time_duration_seconds)
+        # Reverse to chronological order
+        csi_data = list(latest_data)[::-1]
         preprocessed_signal = CSIDataViewSet.load_and_preprocess(csi_data)
         
         # Calculate sampling frequency
-        fs = preprocessed_signal.shape[0] / 60
+        fs = preprocessed_signal.shape[0] / time_duration_seconds
         print(fs)
         
         # Apply bandpass filter
         filtered_signal = CSIDataViewSet.ellip_bandpass(preprocessed_signal, lowcut=0.18, highcut=0.65, fs=fs)
-        print(filtered_signal)
+        # print(filtered_signal)
         
         # Estimate respiration rate
         rr_bpm = CSIDataViewSet.estimate_respiration_rate(filtered_signal, fs=fs)
