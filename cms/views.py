@@ -139,7 +139,8 @@ class RealTimePresenceDetection(viewsets.ModelViewSet):
             # # print(pca_features[0])
             # # # Predict
             # # pca_features.shape()
-            prediction = model.predict(pca_features[0])
+            new_df = pd.DataFrame(pca_features[0])
+            prediction = model.predict(new_df.iloc[:, :10])
             most_common_class = Counter(prediction).most_common(1)[0][0]
             # # presence = int(prediction[0])
             # # print(presence)
