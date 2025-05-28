@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from django.utils.timezone import make_aware
 import joblib
 from .utils import hampel_filter_fast, Get_Amp, apply_pca
+from collections import Counter
 
 model = joblib.load('presence_detection_model.pkl')
 
@@ -139,9 +140,11 @@ class RealTimePresenceDetection(viewsets.ModelViewSet):
             # # pca_features.shape()
             prediction = model.predict(pca_features[0])
             print(prediction)
+            most_common_class = Counter(prediction).most_common(1)[0][0]
+            print(most_common_class)
             # # presence = int(prediction[0])
             # # print(presence)
-            return Response({"presence": prediction}, status=status.HTTP_200_OK)
+            return Response({"presence": most_common_class}, status=status.HTTP_200_OK)
         
         # except Exception as e:
         #     return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
