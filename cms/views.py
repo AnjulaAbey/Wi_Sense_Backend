@@ -139,9 +139,7 @@ class RealTimePresenceDetection(viewsets.ModelViewSet):
             # # # Predict
             # # pca_features.shape()
             prediction = model.predict(pca_features[0])
-            print(prediction)
             most_common_class = Counter(prediction).most_common(1)[0][0]
-            print(most_common_class)
             # # presence = int(prediction[0])
             # # print(presence)
             return Response({"presence": most_common_class}, status=status.HTTP_200_OK)
