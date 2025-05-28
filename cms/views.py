@@ -15,7 +15,8 @@ import joblib
 from .utils import hampel_filter_fast, Get_Amp, apply_pca
 from collections import Counter
 
-model = joblib.load('presence_detection_model.pkl')
+# model = joblib.load('presence_detection_model.pkl')
+model = joblib.load('presence_detection_model_2.pkl')
 
 ESP32_start_time = datetime(2025, 1, 9, 9, 5) 
 class CSIDataViewSet(viewsets.ModelViewSet):
