@@ -85,13 +85,14 @@ class CSIDataViewSet(viewsets.ModelViewSet):
             return Response({"error": "No CSI data available."}, status=status.HTTP_400_BAD_REQUEST)
             # Extract timestamps for fs calculation
         latest_entries = list(latest_entries)
-        start_time = int(latest_entries[0]["time_stamp"])
-        end_time = int(latest_entries[-1]["time_stamp"])
+        # start_time = int(latest_entries[-1]["time_stamp"])
+        # end_time = int(latest_entries[0]["time_stamp"])
         time_duration_microseconds = end_time - start_time
         time_duration_seconds = time_duration_microseconds / 1e6
         print(time_duration_seconds)
         # Reverse to chronological order
         csi_data = list(latest_data)[::-1]
+        # print(csi_data[0])
         preprocessed_signal = CSIDataViewSet.load_and_preprocess(csi_data)
         
         # Calculate sampling frequency
