@@ -25,7 +25,8 @@ class CSIDataConsumer(AsyncWebsocketConsumer):
             mac=data["mac"],
             rssi=data["rssi"],
             time_stamp=data["time_stamp"],
-            raw_data=data["csi_raw_data"]
+            raw_data=data["csi_raw_data"],
+            port_time_stamp=data["port_time_stamp"]
             # other fields
         )
 

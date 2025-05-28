@@ -9,3 +9,4 @@ class CSIData(models.Model):
     raw_data = models.JSONField()
     # Add other fields as needed
     created_at = models.DateTimeField(auto_now_add=True)
+    port_time_stamp = models.CharField(max_length=255, null=True, blank=True)

@@ -10,19 +10,21 @@ def Get_Amp(data):
         return None
 
     # Time range
-    time_range = data["relative_time_seconds"].iloc[-1] - data["relative_time_seconds"].iloc[0]
+    time_range = data["time_stamp"].iloc[0] - data["time_stamp"].iloc[-1]
 
     # Prepare
-    csi_raw = data["CSI_DATA"].tolist()
-    num_rows = len(csi_raw)
+    # csi_raw = " ".join(data["CSI_DATA"])
+    num_rows = len(data["CSI_DATA"])
     AmpCSI = np.zeros((num_rows, 64))
     PhaseCSI = np.zeros((num_rows, 64))
 
     # Process CSI rows
     for i in range(num_rows - 1):  # last row skipped as in original
         # Clean and split
-        parts = csi_raw[i].replace('[', '').replace(']', '').split()
-        parts = np.array(parts, dtype=np.int64)
+        # parts = csi_raw[i].split()
+        # parts = np.array(data["CSI_DATA"], dtype=np.int64)
+        parts = np.array(data["CSI_DATA"].iloc[i])
+        print(parts)
         
         # Separate real and imaginary
         ImCSI = parts[::2]
@@ -40,16 +42,18 @@ def Get_Amp(data):
     signal_dc_removed = Amp - np.mean(Amp, axis=0)
 
     # Prepare dataset
-    y = pd.Series(data["Presence"].values[:len(signal_dc_removed)], name='y')
+    # y = pd.Series(data["Presence"].values[:len(signal_dc_removed)], name='y')
     x = pd.DataFrame(signal_dc_removed)
-    x_y_dataset = pd.concat([x, y], axis=1)
+    y = None
+    # x_y_dataset = pd.concat([x, y], axis=1)
+    x_y_dataset = x
 
     # Sampling frequency
     fs = signal_dc_removed.shape[0] / time_range
     time = np.arange(signal_dc_removed.shape[0]) / fs
 
     # Optional plot
-    plt.plot(time, signal_dc_removed)
+    # plt.plot(time, signal_dc_removed)
     
     return signal_dc_removed, fs, time, x_y_dataset, y
 
