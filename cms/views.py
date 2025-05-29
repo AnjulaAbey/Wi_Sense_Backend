@@ -88,8 +88,8 @@ class CSIDataViewSet(viewsets.ModelViewSet):
             return Response({"error": "No CSI data available."}, status=status.HTTP_400_BAD_REQUEST)
             # Extract timestamps for fs calculation
         latest_entries = list(latest_entries)
-        start_time = int(latest_entries[-1]["time_stamp"])
-        end_time = int(latest_entries[0]["time_stamp"])
+        start_time = int(latest_entries[0]["time_stamp"])
+        end_time = int(latest_entries[-1]["time_stamp"])
         time_duration_microseconds = end_time - start_time
         time_duration_seconds = time_duration_microseconds / 1e6
         print(time_duration_seconds)
@@ -119,7 +119,7 @@ class RealTimePresenceDetection(viewsets.ModelViewSet):
     def predict_presence(self, request):
         # try:
             # Fetch latest 30 entries
-            latest_entries = CSIData.objects.order_by('-port_time_stamp')[:100].values()
+            latest_entries = CSIData.objects.order_by('-port_time_stamp')[:1000].values()
             # print(latest_entries)
             latest_entries = pd.DataFrame(latest_entries) 
             print(latest_entries)
@@ -145,7 +145,7 @@ class RealTimePresenceDetection(viewsets.ModelViewSet):
             most_common_class = Counter(prediction).most_common(1)[0][0]
             # # presence = int(prediction[0])
             # # print(presence)
-            return Response({"presence": most_common_class}, status=status.HTTP_200_OK)
+            return Response({"presence": prediction[0]}, status=status.HTTP_200_OK)
         
         # except Exception as e:
         #     return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
