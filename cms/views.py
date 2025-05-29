@@ -12,11 +12,12 @@ from datetime import datetime
 from datetime import datetime, timedelta
 from django.utils.timezone import make_aware
 import joblib
-from .utils import hampel_filter_fast, Get_Amp, apply_pca
+from .utils import hampel_filter_fast, Get_Amp, apply_pca, extract_features_with_sliding_window
 from collections import Counter
 
 # model = joblib.load('presence_detection_model.pkl')
 model = joblib.load('presence_detection_model_2.pkl')
+model_posture = joblib.load('posture_detection_model_1.pkl')
 
 ESP32_start_time = datetime(2025, 1, 9, 9, 5) 
 class CSIDataViewSet(viewsets.ModelViewSet):
@@ -87,8 +88,8 @@ class CSIDataViewSet(viewsets.ModelViewSet):
             return Response({"error": "No CSI data available."}, status=status.HTTP_400_BAD_REQUEST)
             # Extract timestamps for fs calculation
         latest_entries = list(latest_entries)
-        # start_time = int(latest_entries[-1]["time_stamp"])
-        # end_time = int(latest_entries[0]["time_stamp"])
+        start_time = int(latest_entries[-1]["time_stamp"])
+        end_time = int(latest_entries[0]["time_stamp"])
         time_duration_microseconds = end_time - start_time
         time_duration_seconds = time_duration_microseconds / 1e6
         print(time_duration_seconds)
@@ -148,3 +149,37 @@ class RealTimePresenceDetection(viewsets.ModelViewSet):
         
         # except Exception as e:
         #     return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class RealTimePostureDetection(viewsets.ModelViewSet):
+    queryset = CSIData.objects.all().order_by('-port_time_stamp')
+    serializer_class = CSIDataSerializer
+
+    @action(detail=False, methods=['get'], url_path='predict')
+    def predict_posture(self, request):
+        latest_entries = CSIData.objects.order_by('-port_time_stamp')[:1000].values()
+        # print(latest_entries)
+        latest_entries = pd.DataFrame(latest_entries) 
+        print(latest_entries)
+        #  # Ensure time order
+        # # print(latest_entries.head()
+                
+
+        # # Step 3: Create DataFrame from combined data
+        df = latest_entries
+        # # Apply preprocessing
+        df["port_time_stamp"] =  df["port_time_stamp"].astype(int)
+        df["time_stamp"] =  df["time_stamp"].astype(int)
+        df["CSI_DATA"] = df["raw_data"]
+        signal, fs, time, _, y = Get_Amp(df)
+        filtered = hampel_filter_fast(pd.DataFrame(signal))
+        window_length = 5
+        print("fs", fs)
+        # features = extract_features_with_sliding_window(filtered, fs, window_length, y)
+        # pca_features = apply_pca(features, 20, explained_variance=0.95)
+        # predictions = model_posture.predict(pca_features)
+        # most_common_class = predictions.value_counts().idxmax()
+        # print(most_common_class)
+
+        return Response({"posture": "N/A"}, status=status.HTTP_200_OK)
+        
+

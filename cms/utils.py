@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import median_abs_deviation
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
+from scipy.stats import skew, kurtosis, mode
 
 def Get_Amp(data):
     if len(data) <= 1:
@@ -115,4 +116,38 @@ def apply_pca(data, n_components=None, explained_variance=0.95):
         pca_df['start_timestamp'] = timestamps.values
 
     return pca_df, pca
+
+def extract_features_with_sliding_window(data, sampling_rate, window_length, y):
+    # Determine the window size in samples
+    window_size = int(sampling_rate * window_length)
+    print(window_size)
+    print(data)
+    step_size = 1  # No overlap; adjust if overlap is desired
+
+    features = []
+    subcarrier_cols = data  # Subcarrier groups
+
+    # for start in range(0, len(data) - window_size + 1, step_size):
+    #     window = data[start : start + window_size]  # Extract sliding window
+
+    #     window_features = {}
+    #     for i in range(len(subcarrier_cols[0])):
+    #         col = i
+    #         subcarrier_data = window[i]
+    #         window_features[f"{col}_mean"] = subcarrier_data.mean()
+    #         window_features[f"{col}_max"] = subcarrier_data.max()
+    #         window_features[f"{col}_min"] = subcarrier_data.min()
+    #         window_features[f"{col}_var"] = subcarrier_data.var()
+    #         window_features[f"{col}_skew"] = skew(subcarrier_data)
+    #         window_features[f"{col}_range"] = subcarrier_data.max() - subcarrier_data.min()
+    #         window_features[f"{col}_mode"] = mode(subcarrier_data, nan_policy='omit')[0]
+    #         window_features[f"{col}_median"] = np.median(subcarrier_data)
+    #         window_features[f"{col}_kurtosis"] = kurtosis(subcarrier_data)
+    #     window_features["y"] = y[start + window_size-1]
+
+    #     features.append(window_features)
+
+    # Convert to a DataFrame
+    features_df = pd.DataFrame(features)
+    return features_df 
 
